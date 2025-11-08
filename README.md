@@ -1,6 +1,6 @@
 # FFmpeg GIF Converter
 
-A production-ready video to GIF converter powered by FFmpeg and Cloudflare Containers.
+A video to GIF converter powered by FFmpeg and Cloudflare Containers.
 
 ## Features
 
@@ -226,12 +226,6 @@ All errors include:
 4. **Timeout Protection**: Prevents long-running processes
 5. **Error Message Sanitization**: Doesn't expose internal paths
 
-## Browser Support
-
-- Chrome/Edge: Full support
-- Firefox: Full support
-- Safari: Full support
-- Mobile browsers: Full support
 
 ## Known Limitations
 
@@ -269,4 +263,4 @@ All errors include:
 
 ## License
 
-ISC
+MIT
