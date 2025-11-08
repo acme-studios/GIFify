@@ -1,0 +1,18 @@
+{
+  "name": "ffmpeg-gif-app",
+  "version": "1.0.0",
+  "description": "A simple video to GIF converter.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cloudflare/containers": "^0.0.28",
+    "express": "^5.1.0",
+    "multer": "^2.0.2"
+  }
+}

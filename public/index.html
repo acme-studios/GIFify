@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIFify</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .loader {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #f38020;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            transition: width 0.3s ease-in-out;
+        }
+        .thumbnail-preview {
+            max-height: 200px;
+            object-fit: cover;
+        }
+        .quality-option {
+            transition: all 0.2s ease;
+        }
+        .quality-option:hover {
+            transform: translateY(-2px);
+        }
+        .quality-option.selected {
+            border-color: #f38020;
+            background-color: #fff5f0;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12 max-w-2xl w-full">
+        <!-- Header -->
+        <div class="flex justify-center items-center mb-6">
+            <svg class="h-12 w-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h1 class="text-4xl font-bold text-gray-800 ml-4">GIF Converter</h1>
+        </div>
+        
+        <p class="text-gray-600 text-center mb-2">FFmpeg-powered video to GIF conversion</p>
+        <p class="font-semibold text-gray-700 text-center mb-8">
+            Running on <span class="text-orange-500">Cloudflare Containers</span>
+        </p>
+
+        <!-- Upload Form -->
+        <form id="uploadForm" class="space-y-6">
+            <!-- File Upload Section -->
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-orange-400 transition-colors">
+                <label for="videoFile" class="cursor-pointer block">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="text-orange-500 font-semibold hover:text-orange-600">Choose a video file</span>
+                    <p class="text-xs text-gray-500 mt-2">MP4, MOV, AVI, MKV, WebM (max 100MB)</p>
+                </label>
+                <input type="file" id="videoFile" name="video" accept="video/*" class="hidden"/>
+            </div>
+            
+            <div id="fileInfo" class="hidden fade-in">
+                <div class="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center space-x-3">
+                        <svg class="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                        </svg>
+                        <div class="text-left">
+                            <p id="fileName" class="text-sm font-semibold text-gray-800"></p>
+                            <p id="fileSize" class="text-xs text-gray-500"></p>
+                        </div>
+                    </div>
+                    <button type="button" id="removeFile" class="text-red-500 hover:text-red-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thumbnail Preview -->
+            <div id="thumbnailSection" class="hidden fade-in">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-semibold text-gray-700 mb-3">Video Preview</p>
+                    <div class="relative">
+                        <img id="thumbnailImage" src="" alt="Video thumbnail" class="thumbnail-preview w-full rounded-lg shadow-md">
+                        <div id="thumbnailLoader" class="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-lg">
+                            <div class="loader"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quality Selection -->
+            <div id="qualitySection" class="hidden fade-in">
+                <p class="text-sm font-semibold text-gray-700 mb-3">Select Quality</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <button type="button" class="quality-option border-2 border-gray-300 rounded-lg p-4 text-center" data-quality="low">
+                        <p class="font-semibold text-gray-800">Low</p>
+                        <p class="text-xs text-gray-500 mt-1">320px, 10fps</p>
+                        <p class="text-xs text-gray-400">Smaller file</p>
+                    </button>
+                    <button type="button" class="quality-option border-2 border-gray-300 rounded-lg p-4 text-center selected" data-quality="medium">
+                        <p class="font-semibold text-gray-800">Medium</p>
+                        <p class="text-xs text-gray-500 mt-1">480px, 15fps</p>
+                        <p class="text-xs text-gray-400">Balanced</p>
+                    </button>
+                    <button type="button" class="quality-option border-2 border-gray-300 rounded-lg p-4 text-center" data-quality="high">
+                        <p class="font-semibold text-gray-800">High</p>
+                        <p class="text-xs text-gray-500 mt-1">640px, 20fps</p>
+                        <p class="text-xs text-gray-400">Best quality</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Convert Button -->
+            <button type="submit" id="submitButton" class="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg" disabled>
+                Convert to GIF
+            </button>
+        </form>
+
+        <!-- Progress Section -->
+        <div id="progressSection" class="hidden mt-6 fade-in">
+            <div class="bg-gray-50 rounded-lg p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <p id="progressText" class="text-sm font-semibold text-gray-700">Processing...</p>
+                    <div class="loader"></div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progressBar" class="progress-bar bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="progressDetail" class="text-xs text-gray-500 mt-2"></p>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultSection" class="hidden mt-6 fade-in">
+            <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border-2 border-green-200">
+                <div class="flex items-center justify-center mb-4">
+                    <svg class="h-8 w-8 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-lg font-bold text-green-700">Conversion Successful!</p>
+                </div>
+                <img id="gifImage" src="" alt="Generated GIF" class="rounded-lg shadow-lg mx-auto max-w-full h-auto mb-4">
+                <a id="downloadLink" href="" download="converted.gif" class="block w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-center shadow-md">
+                    Download GIF
+                </a>
+                <button id="convertAnother" class="mt-3 w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-300">
+                    Convert Another Video
+                </button>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="errorSection" class="hidden mt-6 fade-in">
+            <div class="bg-red-50 rounded-lg p-6 border-2 border-red-200">
+                <div class="flex items-start">
+                    <svg class="h-6 w-6 text-red-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <p class="font-bold text-red-700">Error</p>
+                        <p id="errorMessage" class="text-sm text-red-600 mt-1"></p>
+                    </div>
+                </div>
+                <button id="dismissError" class="mt-4 w-full bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 rounded-lg transition duration-300">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const form = document.getElementById('uploadForm');
+        const videoFileInput = document.getElementById('videoFile');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFileBtn = document.getElementById('removeFile');
+        const thumbnailSection = document.getElementById('thumbnailSection');
+        const thumbnailImage = document.getElementById('thumbnailImage');
+        const thumbnailLoader = document.getElementById('thumbnailLoader');
+        const qualitySection = document.getElementById('qualitySection');
+        const qualityOptions = document.querySelectorAll('.quality-option');
+        const submitButton = document.getElementById('submitButton');
+        const progressSection = document.getElementById('progressSection');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const progressDetail = document.getElementById('progressDetail');
+        const resultSection = document.getElementById('resultSection');
+        const gifImage = document.getElementById('gifImage');
+        const downloadLink = document.getElementById('downloadLink');
+        const convertAnotherBtn = document.getElementById('convertAnother');
+        const errorSection = document.getElementById('errorSection');
+        const errorMessage = document.getElementById('errorMessage');
+        const dismissErrorBtn = document.getElementById('dismissError');
+
+        let selectedQuality = 'medium';
+        let selectedFile = null;
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Show error
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorSection.classList.remove('hidden');
+            progressSection.classList.add('hidden');
+        }
+
+        // Reset form
+        function resetForm() {
+            videoFileInput.value = '';
+            selectedFile = null;
+            fileInfo.classList.add('hidden');
+            thumbnailSection.classList.add('hidden');
+            qualitySection.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            errorSection.classList.add('hidden');
+            progressSection.classList.add('hidden');
+            submitButton.disabled = true;
+        }
+
+        // File selection handler
+        videoFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            selectedFile = file;
+            
+            // Show file info
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.remove('hidden');
+            qualitySection.classList.remove('hidden');
+            submitButton.disabled = false;
+            errorSection.classList.add('hidden');
+
+            // Generate thumbnail
+            thumbnailSection.classList.remove('hidden');
+            thumbnailLoader.classList.remove('hidden');
+
+            try {
+                const formData = new FormData();
+                formData.append('video', file);
+
+                const response = await fetch('/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    thumbnailImage.src = URL.createObjectURL(blob);
+                    thumbnailLoader.classList.add('hidden');
+                } else {
+                    thumbnailSection.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Thumbnail generation failed:', error);
+                thumbnailSection.classList.add('hidden');
+            }
+        });
+
+        // Remove file handler
+        removeFileBtn.addEventListener('click', resetForm);
+
+        // Quality selection handler
+        qualityOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                qualityOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedQuality = option.dataset.quality;
+            });
+        });
+
+        // Form submission handler
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!selectedFile) return;
+
+            // Hide previous results/errors
+            resultSection.classList.add('hidden');
+            errorSection.classList.add('hidden');
+            
+            // Show progress
+            progressSection.classList.remove('hidden');
+            submitButton.disabled = true;
+            
+            // Simulate progress stages
+            progressBar.style.width = '10%';
+            progressText.textContent = 'Uploading video...';
+            progressDetail.textContent = 'Preparing your video for conversion';
+
+            try {
+                const formData = new FormData();
+                formData.append('video', selectedFile);
+                formData.append('quality', selectedQuality);
+
+                // Update progress
+                setTimeout(() => {
+                    progressBar.style.width = '30%';
+                    progressText.textContent = 'Analyzing video...';
+                    progressDetail.textContent = 'Extracting video properties';
+                }, 500);
+
+                setTimeout(() => {
+                    progressBar.style.width = '50%';
+                    progressText.textContent = 'Generating color palette...';
+                    progressDetail.textContent = 'Optimizing colors for GIF format';
+                }, 1500);
+
+                setTimeout(() => {
+                    progressBar.style.width = '75%';
+                    progressText.textContent = 'Converting to GIF...';
+                    progressDetail.textContent = 'This may take a moment for longer videos';
+                }, 3000);
+
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Conversion failed');
+                }
+
+                // Complete progress
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Complete!';
+                progressDetail.textContent = 'Your GIF is ready';
+
+                const gifBlob = await response.blob();
+                const gifUrl = URL.createObjectURL(gifBlob);
+
+                gifImage.src = gifUrl;
+                downloadLink.href = gifUrl;
+                
+                // Show result after brief delay
+                setTimeout(() => {
+                    progressSection.classList.add('hidden');
+                    resultSection.classList.remove('hidden');
+                }, 800);
+
+            } catch (error) {
+                console.error('Conversion error:', error);
+                showError(error.message || 'An unexpected error occurred. Please try again.');
+                submitButton.disabled = false;
+            }
+        });
+
+        // Convert another video
+        convertAnotherBtn.addEventListener('click', resetForm);
+
+        // Dismiss error
+        dismissErrorBtn.addEventListener('click', () => {
+            errorSection.classList.add('hidden');
+            submitButton.disabled = false;
+        });
+    </script>
+</body>
+</html>
+

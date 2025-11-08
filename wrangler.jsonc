@@ -1,0 +1,46 @@
+{
+  "name": "giffy",
+  // The entry point for  Worker's source code.
+  "main": "src/index.js",
+  "compatibility_date": "2024-11-01",
+  "observability": {
+    "logs": {
+      "enabled": true
+    }
+  },
+
+  // --- Container Configuration ---
+  // This section defines the container that this Worker will manage.
+  "containers": [
+    {
+      // This MUST match the class name exported from src/index.js.
+      "class_name": "GiffyContainer",
+      // Tells Wrangler to build the container image from the local Dockerfile.
+      "image": "./Dockerfile",
+      // A descriptive name for this container configuration.
+      "name": "giffy",
+      "max_instances": 5
+    }
+  ],
+
+  // --- Bindings ---
+  // This binding allows our Worker code to communicate with the container.
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "GiffyContainer",
+        // This is the name we use in the Worker's 'env' object (e.g., env.GIFFY).
+        "name": "GIFFY"
+      }
+    ]
+  },
+
+  // --- Migrations ---
+  // This is a mandatory section for any container that is backed by a Durable Object.
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["GiffyContainer"]
+    }
+  ]
+}

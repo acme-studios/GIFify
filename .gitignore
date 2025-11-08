@@ -1,0 +1,18 @@
+# node_modules  
+node_modules/
+
+# wrangler
+.wrangler/
+wrangler.toml
+
+# uploads
+uploads/
+
+# videos
+videos/
+
+# logs
+logs/
+
+# favicon
+favicon.png
